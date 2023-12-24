@@ -43,6 +43,10 @@
             };
           };
         };
+        # There has to be a better way to do this? types.addCheck don’t work
+        secret = with lib; with types; (attrsOf anything) // {
+          check = x: ((attrsOf anything).check x) && builtins.hasAttr "type" x;
+        };
       in {
         options = with lib; with types; {
           secrets-trampoline = {
@@ -52,7 +56,7 @@
               default = {};
             };
             secrets = mkOption {
-              type = attrsOf anything;
+              type = attrsOf secret;
               default = {};
               description = mdDoc ''
                 A single secret specification.
@@ -65,7 +69,7 @@
               };
             };
             secretReader = mkOption {
-              type = raw;
+              type = attrsOf (functionTo str);
               description = mdDoc "Read a secret to pass to nix-darwin.
 
 This is a function that accepts the secret name as an argument, and returns a
@@ -77,7 +81,7 @@ as a bash command, it can also just be the path to a derivation which contains a
 script doing the real work.
 
 The shell command will be executed at `nix-darwin switch` time.";
-              example = literalExpression "name: ''\${pkgs._1password}/bin/op read \"op://Personal/Nix/\${name}\"''";
+              example = literalExpression "{ \"1Password\" = { name } : ''\${pkgs._1password}/bin/op read \"op://Personal/Nix/\${name}\"''; }";
             };
           };
         };
@@ -100,10 +104,15 @@ The shell command will be executed at `nix-darwin switch` time.";
               (
                 cd "$d"
                 declare -a args
-                ${lib.concatStringsSep "\n" (lib.mapAttrsToList (name: value: ''
-                  secret="$(${sw.secretReader (sw.secrets.${value})})"
-                  args+=("--set" ${lib.escapeShellArg name} "$secret")
-                '') program.secrets)}
+                ${lib.concatStringsSep "\n" (lib.mapAttrsToList (name: value:
+                  let
+                    secret = sw.secrets.${value};
+                    reader = sw.secretReader.${secret.type};
+                    args = builtins.removeAttrs secret ["type"];
+                  in ''
+                    secret="$(${reader args})"
+                    args+=("--set" ${lib.escapeShellArg name} "$secret")
+                  '') program.secrets)}
                 # Yes this briefly exposes the secret through the argv!
                 sudo ${makeBinaryWrapper} ${lib.getExe program.drv} wrapper "''${args[@]}"
                 ${lib.concatMapStringsSep "\n" (user: ''

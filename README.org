@@ -40,22 +40,25 @@ This example creates a binary in =/var/run/secrets-trampolines/backup-to-s3= whi
                 };
                 secrets = {
                   aws-key-id = {
+                    type = "1Password";
                     vault = "Family";
                     item = "hbb3ohvwtudves6jxpe7zfjhdm";
                     entry = "key id";
                   };
                   aws-secret-key = {
+                    type = "1Password";
                     vault = "Family";
                     item = "hbb3ohvwtudves6jxpe7zfjhdm";
                     entry = "secret key";
                   };
                   backup-encryption = {
+                    type = "1Password";
                     vault = "Personal";
                     item = "s6jxpe7zfjhdmhbb3ohvwtudve";
                     entry = "backup encryption key";
                   };
                 };
-                secretReader = { vault, item, entry, ... }: ''
+                secretReader."1Password" = { vault, item, entry }: ''
                   ${pkgs._1password}/bin/op read "op://${vault}/${item}/${entry}"
                 '';
               }
