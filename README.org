@@ -58,6 +58,8 @@ This example creates a binary in =/var/run/secrets-trampolines/backup-to-s3= whi
                     entry = "backup encryption key";
                   };
                 };
+                # Included here as a demonstration, though this specific reader
+                # is provided by default
                 secretReader."1Password" = { vault, item, entry }: ''
                   ${pkgs._1password}/bin/op read "op://${vault}/${item}/${entry}"
                 '';

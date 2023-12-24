@@ -70,7 +70,7 @@
             };
             secretReader = mkOption {
               type = attrsOf (functionTo str);
-              description = mdDoc "Read a secret to pass to nix-darwin.
+              description = mdDoc ''Read a secret to pass to nix-darwin.
 
 This is a function that accepts the secret name as an argument, and returns a
 shell command (as a string) which, when executed, will fetch that secret somehow
@@ -80,13 +80,22 @@ Be careful to escape values as you deem necessary. Since the string is executed
 as a bash command, it can also just be the path to a derivation which contains a
 script doing the real work.
 
-The shell command will be executed at `nix-darwin switch` time.";
+The shell command will be executed at `nix-darwin switch` time.
+
+By default, a 1Password reader is provided.
+'';
+              default = {};
               example = literalExpression "{ \"1Password\" = { name } : ''\${pkgs._1password}/bin/op read \"op://Personal/Nix/\${name}\"''; }";
             };
           };
         };
         config =
           let
+            defaultReaders = {
+              "1Password" = { vault, item, entry }: ''
+                ${pkgs._1password}/bin/op read "op://${vault}/${item}/${entry}"
+              '';
+            };
             sw = config.secrets-trampoline;
             # make this sudo’able
             makeBinaryWrapper = pkgs.writeShellScript "makeBinaryWrapper" ''
@@ -107,7 +116,7 @@ The shell command will be executed at `nix-darwin switch` time.";
                 ${lib.concatStringsSep "\n" (lib.mapAttrsToList (name: value:
                   let
                     secret = sw.secrets.${value};
-                    reader = sw.secretReader.${secret.type};
+                    reader = (defaultReaders // sw.secretReader).${secret.type};
                     args = builtins.removeAttrs secret ["type"];
                   in ''
                     secret="$(${reader args})"
