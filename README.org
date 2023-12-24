@@ -1,0 +1,47 @@
+* Bake Secrets into Executables
+
+Use Nix to bake a secret into an executable without allowing read access to the raw secret for non-root users, just execute.
+
+This example creates a binary in =/var/run/secrets-trampolines/backup-to-s3= which is executable /but not readable/ by user "john":
+
+#+begin_src nix
+secrets-trampoline = {
+  programs = {
+    backup-to-s3 = {
+      drv = pkgs.writeShellScriptBin "backup-to-s3" ''
+        ${pkgs.restic} backup -r s3:https://s3.amazonaws.com/my-bucket ~
+      '';
+      users = [ "john" ];
+      secrets.RESTIC_PASSWORD = "backup-encryption";
+      secrets.AWS_ACCESS_KEY_ID = "aws-key-id";
+      secrets.AWS_SECRET_ACCESS_KEY = "aws-secret-key";
+    };
+  };
+  secrets = {
+    aws-key-id = {
+      vault = "Family";
+      item = "hbb3ohvwtudves6jxpe7zfjhdm";
+      entry = "key id";
+    };
+    aws-secret-key = {
+      vault = "Family";
+      item = "hbb3ohvwtudves6jxpe7zfjhdm";
+      entry = "secret key";
+    };
+    backup-encryption = {
+      vault = "Personal";
+      item = "s6jxpe7zfjhdmhbb3ohvwtudve";
+      entry = "backup encryption key";
+    };
+  };
+  secretReader = { vault, item, entry, ... }: ''
+    ${pkgs._1password}/bin/op read "op://${vault}/${item}/${entry}"
+  '';
+}
+#+end_src
+
+The secret is read once from 1Password, when you run =nix-darwin switch=.
+
+It’s useful for background tasks that you trust with a secret, but where you don’t want just any process with file-read access on your OS to have access to that secret.
+
+The usual solution to secret provisioning on servers is to just have the secret available as a file on your disk, but on regular desktop computers that can be too open. Another solution is to use a vault like Keychain or 1Password, but that breaks down for background services.
