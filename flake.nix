@@ -15,10 +15,7 @@
 {
   inputs = { };
 
-  outputs = {
-    self
-    , nixpkgs
-  }: {
+  outputs = { self }: {
     # Module to allow darwin hosts to get the timezone name as a string without
     # a password. Insanity but ok. Separate module because it affects different
     # parts of the system and I want all that code grouped together.
