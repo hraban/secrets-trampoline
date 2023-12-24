@@ -30,7 +30,7 @@ This example creates a binary in =/var/run/secrets-trampolines/backup-to-s3= whi
                 programs = {
                   backup-to-s3 = {
                     drv = pkgs.writeShellScriptBin "backup-to-s3" ''
-                      ${pkgs.restic} backup -r s3:https://s3.amazonaws.com/my-bucket ~
+                      ${pkgs.restic}/bin/restic backup -r s3:https://s3.amazonaws.com/my-bucket ~
                     '';
                     users = [ "john" ];
                     secrets.RESTIC_PASSWORD = "backup-encryption";
