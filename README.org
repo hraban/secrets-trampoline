@@ -5,40 +5,71 @@ Use Nix to bake a secret into an executable without allowing read access to the 
 This example creates a binary in =/var/run/secrets-trampolines/backup-to-s3= which is executable /but not readable/ by user "john":
 
 #+begin_src nix
-secrets-trampoline = {
-  programs = {
-    backup-to-s3 = {
-      drv = pkgs.writeShellScriptBin "backup-to-s3" ''
-        ${pkgs.restic} backup -r s3:https://s3.amazonaws.com/my-bucket ~
-      '';
-      users = [ "john" ];
-      secrets.RESTIC_PASSWORD = "backup-encryption";
-      secrets.AWS_ACCESS_KEY_ID = "aws-key-id";
-      secrets.AWS_SECRET_ACCESS_KEY = "aws-secret-key";
+{
+  inputs.secrets-trampoline.url = "github:hraban/secrets-trampoline";
+  # ...
+
+  outputs = {
+    nix-darwin
+    , secrets-trampoline
+    , ...
+  }: {
+    darwinConfigurations = {
+      MyHost = nix-darwin.lib.darwinSystem {
+        # ...
+
+        modules = [
+          secrets-trampoline.darwinModules.default
+
+          (
+            { pkgs, config, inputs, ... }:
+            {
+              #...
+
+              secrets-trampoline = {
+                programs = {
+                  backup-to-s3 = {
+                    drv = pkgs.writeShellScriptBin "backup-to-s3" ''
+                      ${pkgs.restic} backup -r s3:https://s3.amazonaws.com/my-bucket ~
+                    '';
+                    users = [ "john" ];
+                    secrets.RESTIC_PASSWORD = "backup-encryption";
+                    secrets.AWS_ACCESS_KEY_ID = "aws-key-id";
+                    secrets.AWS_SECRET_ACCESS_KEY = "aws-secret-key";
+                  };
+                };
+                secrets = {
+                  aws-key-id = {
+                    vault = "Family";
+                    item = "hbb3ohvwtudves6jxpe7zfjhdm";
+                    entry = "key id";
+                  };
+                  aws-secret-key = {
+                    vault = "Family";
+                    item = "hbb3ohvwtudves6jxpe7zfjhdm";
+                    entry = "secret key";
+                  };
+                  backup-encryption = {
+                    vault = "Personal";
+                    item = "s6jxpe7zfjhdmhbb3ohvwtudve";
+                    entry = "backup encryption key";
+                  };
+                };
+                secretReader = { vault, item, entry, ... }: ''
+                  ${pkgs._1password}/bin/op read "op://${vault}/${item}/${entry}"
+                '';
+              }
+            }
+          )
+
+        ];
+      };
     };
   };
-  secrets = {
-    aws-key-id = {
-      vault = "Family";
-      item = "hbb3ohvwtudves6jxpe7zfjhdm";
-      entry = "key id";
-    };
-    aws-secret-key = {
-      vault = "Family";
-      item = "hbb3ohvwtudves6jxpe7zfjhdm";
-      entry = "secret key";
-    };
-    backup-encryption = {
-      vault = "Personal";
-      item = "s6jxpe7zfjhdmhbb3ohvwtudve";
-      entry = "backup encryption key";
-    };
-  };
-  secretReader = { vault, item, entry, ... }: ''
-    ${pkgs._1password}/bin/op read "op://${vault}/${item}/${entry}"
-  '';
 }
 #+end_src
+
+(assuming you use flakes)
 
 The secret is read once from 1Password, when you run =nix-darwin switch=.
 
