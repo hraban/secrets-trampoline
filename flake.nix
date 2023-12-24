@@ -105,7 +105,9 @@ By default, a 1Password reader is provided.
               makeBinaryWrapper "''${@}"
             '';
           in {
-          system.activationScripts.preUserActivation.text = lib.concatMapStringsSep "\n" (program: ''
+          system.activationScripts.preUserActivation.text = ''
+            sudo rm -rf /var/run/secrets-trampolines
+          '' + lib.concatStringsSep "\n" (lib.mapAttrsToList (name: program: ''
             (
               set -euo pipefail
               umask 077
@@ -130,11 +132,11 @@ By default, a 1Password reader is provided.
                 sudo mkdir -p /var/run/secrets-trampolines
                 sudo chown root /var/run/secrets-trampolines
                 sudo chmod 755 /var/run/secrets-trampolines
-                sudo mv wrapper /var/run/secrets-trampolines/${lib.escapeShellArg (lib.getName program.drv)}
+                sudo mv wrapper /var/run/secrets-trampolines/${lib.escapeShellArg name}
               )
               rm -rf "$d"
             )
-          '') (builtins.attrValues sw.programs);
+          '') sw.programs);
         };
       };
   };
