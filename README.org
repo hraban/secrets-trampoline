@@ -76,3 +76,9 @@ The secret is read once from 1Password, when you run =nix-darwin switch=.
 It’s useful for background tasks that you trust with a secret, but where you don’t want just any process with file-read access on your OS to have access to that secret.
 
 The usual solution to secret provisioning on servers is to just have the secret available as a file on your disk, but on regular desktop computers that can be too open. Another solution is to use a vault like Keychain or 1Password, but that breaks down for background services.
+
+** Safety
+
+There is at least one vulnerability: while “baking”, the secret is temoprarily on a subprocess’ argv. This is generally considered bad practice because argv of running processes is easy for other processes to view.
+
+The actual safety of your secret of course depends on the nested application not leaking it. If e.g. you baked something as general purpose as =vim=, you might as well just put the secret directly in a plain text file.
