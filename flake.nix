@@ -84,6 +84,11 @@ By default, a 1Password reader is provided.
               default = {};
               example = literalExpression "{ \"1Password\" = { name } : ''\${pkgs._1password}/bin/op read \"op://Personal/Nix/\${name}\"''; }";
             };
+            directory = mkOption {
+              type = str;
+              default = "/usr/local/secrets-trampolines";
+              description = mdDoc "Directory on local filesystem in which to store the trampolines";
+            };
           };
         };
         config =
@@ -103,7 +108,7 @@ By default, a 1Password reader is provided.
             '';
           in {
           system.activationScripts.preUserActivation.text = ''
-            sudo rm -rf /var/run/secrets-trampolines
+            sudo rm -rf ${lib.escapeShellArg sw.directory}
           '' + lib.concatStringsSep "\n" (lib.mapAttrsToList (name: program: ''
             (
               set -euo pipefail
@@ -126,10 +131,10 @@ By default, a 1Password reader is provided.
                 ${lib.concatMapStringsSep "\n" (user: ''
                   sudo /bin/chmod +a "user:"${lib.escapeShellArg user}":allow:execute" wrapper
                 '') program.users}
-                sudo mkdir -p /var/run/secrets-trampolines
-                sudo chown root /var/run/secrets-trampolines
-                sudo chmod 755 /var/run/secrets-trampolines
-                sudo mv wrapper /var/run/secrets-trampolines/${lib.escapeShellArg name}
+                sudo mkdir -p ${lib.escapeShellArg sw.directory}
+                sudo chown root ${lib.escapeShellArg sw.directory}
+                sudo chmod 755 ${lib.escapeShellArg sw.directory}
+                sudo mv wrapper ${lib.escapeShellArg sw.directory}/${lib.escapeShellArg name}
               )
               rm -rf "$d"
             )
