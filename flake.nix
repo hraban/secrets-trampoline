@@ -124,11 +124,13 @@ By default, a 1Password reader is provided.
                     args = builtins.removeAttrs secret ["type"];
                   in ''
                     secret="$(${reader args})"
+                    # shellcheck disable=SC2030,SC2031
                     args+=("--set" ${lib.escapeShellArg name} "$secret")
                   '') program.secrets)}
                 # Yes this briefly exposes the secret through the argv!
                 sudo ${makeBinaryWrapper} ${lib.getExe program.drv} wrapper "''${args[@]}"
                 ${lib.concatMapStringsSep "\n" (user: ''
+                  # shellcheck disable=SC2140
                   sudo /bin/chmod +a "user:"${lib.escapeShellArg user}":allow:execute" wrapper
                 '') program.users}
                 sudo mkdir -p ${lib.escapeShellArg sw.directory}
