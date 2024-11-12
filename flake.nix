@@ -82,7 +82,7 @@ The shell command will be executed at `nix-darwin switch` time.
 By default, a 1Password reader is provided.
 '';
               default = {};
-              example = literalExpression "{ \"1Password\" = { name } : ''\${pkgs._1password}/bin/op read \"op://Personal/Nix/\${name}\"''; }";
+              example = literalExpression "{ \"1Password\" = { name } : ''\${pkgs._1password-cli}/bin/op read \"op://Personal/Nix/\${name}\"''; }";
             };
             directory = mkOption {
               type = str;
@@ -95,7 +95,7 @@ By default, a 1Password reader is provided.
           let
             defaultReaders = {
               "1Password" = { vault, item, entry }: ''
-                ${pkgs._1password}/bin/op read "op://${vault}/${item}/${entry}"
+                ${pkgs._1password-cli}/bin/op read "op://${vault}/${item}/${entry}"
               '';
             };
             sw = config.secrets-trampoline;
