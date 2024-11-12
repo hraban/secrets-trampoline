@@ -1,0 +1,13 @@
+name: "Test"
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  nocommit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: nobssoftware/nocommit@v2
+        name: nocommit
