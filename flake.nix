@@ -1,4 +1,4 @@
-# Copyright © 2023  Hraban Luyat
+# Copyright © 2023–2025  Hraban Luyat
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -95,20 +95,14 @@ By default, a 1Password reader is provided.
           let
             defaultReaders = {
               "1Password" = { vault, item, entry }: ''
-                ${pkgs._1password-cli}/bin/op read "op://${vault}/${item}/${entry}"
+                sudo -u ${lib.escapeShellArg config.system.primaryUser} --set-home \
+                  ${pkgs._1password-cli}/bin/op read "op://${vault}/${item}/${entry}"
               '';
             };
             sw = config.secrets-trampoline;
-            # make this sudo’able
-            makeBinaryWrapper = pkgs.writeShellScript "makeBinaryWrapper" ''
-              source "${pkgs.makeBinaryWrapper}/nix-support/setup-hook"
-              # I don't understand why, but this is necessary?
-              set +eu
-              makeBinaryWrapper "''${@}"
-            '';
           in {
-          system.activationScripts.preUserActivation.text = ''
-            sudo rm -rf ${lib.escapeShellArg sw.directory}
+          system.activationScripts.preActivation.text = ''
+            rm -rf ${lib.escapeShellArg sw.directory}
           '' + lib.concatStringsSep "\n" (lib.mapAttrsToList (name: program: ''
             (
               set -euo pipefail
@@ -128,15 +122,21 @@ By default, a 1Password reader is provided.
                     args+=("--set" ${lib.escapeShellArg name} "$secret")
                   '') program.secrets)}
                 # Yes this briefly exposes the secret through the argv!
-                sudo ${makeBinaryWrapper} ${lib.getExe program.drv} wrapper "''${args[@]}"
+                (
+                  # shellcheck disable=SC1091
+                  source "${pkgs.makeBinaryWrapper}/nix-support/setup-hook"
+                  # I don't understand why, but this is necessary?
+                  set +eu
+                  makeBinaryWrapper ${lib.getExe program.drv} wrapper "''${args[@]}"
+                )
                 ${lib.concatMapStringsSep "\n" (user: ''
                   # shellcheck disable=SC2140
-                  sudo /bin/chmod +a "user:"${lib.escapeShellArg user}":allow:execute" wrapper
+                  /bin/chmod +a "user:"${lib.escapeShellArg user}":allow:execute" wrapper
                 '') program.users}
-                sudo mkdir -p ${lib.escapeShellArg sw.directory}
-                sudo chown root ${lib.escapeShellArg sw.directory}
-                sudo chmod 755 ${lib.escapeShellArg sw.directory}
-                sudo mv wrapper ${lib.escapeShellArg sw.directory}/${lib.escapeShellArg name}
+                mkdir -p ${lib.escapeShellArg sw.directory}
+                chown root ${lib.escapeShellArg sw.directory}
+                chmod 755 ${lib.escapeShellArg sw.directory}
+                mv wrapper ${lib.escapeShellArg sw.directory}/${lib.escapeShellArg name}
               )
               rm -rf "$d"
             )
