@@ -40,10 +40,9 @@
             };
           };
         };
-        # There has to be a better way to do this? types.addCheck don’t work
-        secret = with lib; with types; (attrsOf anything) // {
-          check = x: ((attrsOf anything).check x) && builtins.hasAttr "type" x;
-        };
+        secret = with lib; with types; types.addCheck (attrsOf anything) (
+          x: ((attrsOf anything).check x) && builtins.hasAttr "type" x
+        );
       in {
         options = with lib; with types; {
           secrets-trampoline = {
