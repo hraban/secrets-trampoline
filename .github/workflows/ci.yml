@@ -11,3 +11,17 @@ jobs:
       - uses: actions/checkout@v4
       - uses: nobssoftware/nocommit@v2
         name: nocommit
+
+  nix:
+    strategy:
+      fail-fast: false
+      matrix:
+        config:
+          - os: ubuntu-latest
+          - os: macos-latest
+    runs-on: ${{ matrix.config.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: cachix/install-nix-action@v31
+      - uses: DeterminateSystems/magic-nix-cache-action@main
+      - run: nix flake check -L --keep-going
