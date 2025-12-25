@@ -20,6 +20,11 @@
       let
         program = { name, pkgs, config, lib, ... }: {
           options = with lib; with types; {
+            enable = mkOption {
+              type = bool;
+              default = true;
+              example = false;
+            };
             drv = mkOption {
               type = package;
               description = mdDoc "Inner package to call with the secret as an envvar";
@@ -46,6 +51,7 @@
       in {
         options = with lib; with types; {
           secrets-trampoline = {
+            enable = lib.mkEnableOption "Secrets trampolines management in darwin";
             programs = mkOption {
               type = attrsOf (submodule program);
               description = mdDoc "Programs that can be launched with a secret";
@@ -98,10 +104,10 @@ By default, a 1Password reader is provided.
                   ${pkgs._1password-cli}/bin/op read "op://${vault}/${item}/${entry}"
               '';
             };
-            sw = config.secrets-trampoline;
-          in {
+            cfg = config.secrets-trampoline;
+          in lib.mkIf cfg.enable {
           system.activationScripts.preActivation.text = ''
-            rm -rf ${lib.escapeShellArg sw.directory}
+            rm -rf ${lib.escapeShellArg cfg.directory}
           '' + lib.concatStringsSep "\n" (lib.mapAttrsToList (name: program: ''
             (
               set -euo pipefail
@@ -112,8 +118,8 @@ By default, a 1Password reader is provided.
                 declare -a args
                 ${lib.concatStringsSep "\n" (lib.mapAttrsToList (name: value:
                   let
-                    secret = sw.secrets.${value};
-                    reader = (defaultReaders // sw.secretReader).${secret.type};
+                    secret = cfg.secrets.${value};
+                    reader = (defaultReaders // cfg.secretReader).${secret.type};
                     args = builtins.removeAttrs secret ["type"];
                   in ''
                     secret="$(${reader args})"
@@ -132,14 +138,14 @@ By default, a 1Password reader is provided.
                   # shellcheck disable=SC2140
                   /bin/chmod +a "user:"${lib.escapeShellArg user}":allow:execute" wrapper
                 '') program.users}
-                mkdir -p ${lib.escapeShellArg sw.directory}
-                chown root ${lib.escapeShellArg sw.directory}
-                chmod 755 ${lib.escapeShellArg sw.directory}
-                mv wrapper ${lib.escapeShellArg sw.directory}/${lib.escapeShellArg name}
+                mkdir -p ${lib.escapeShellArg cfg.directory}
+                chown root ${lib.escapeShellArg cfg.directory}
+                chmod 755 ${lib.escapeShellArg cfg.directory}
+                mv wrapper ${lib.escapeShellArg cfg.directory}/${lib.escapeShellArg name}
               )
               rm -rf "$d"
             )
-          '') sw.programs);
+          '') (lib.filterAttrs (_: v: v.enable) cfg.programs));
         };
       };
   };
