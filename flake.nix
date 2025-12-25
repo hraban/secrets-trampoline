@@ -13,9 +13,35 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 {
-  inputs = { };
+  inputs.flake-parts.url = "flake-parts";
 
-  outputs = { self }: {
-    darwinModules.default = import ./secrets-trampoline.nix;
-  };
+  # Only used for treefmt
+  inputs.nixpkgs.url = "github:nixos/nixpkgs/nixpkgs-unstable";
+  inputs.treefmt-nix.url = "github:numtide/treefmt-nix";
+  inputs.systems.url = "systems";
+
+  outputs =
+    {
+      self,
+      treefmt-nix,
+      flake-parts,
+      ...
+    }@inputs:
+    flake-parts.lib.mkFlake { inherit inputs; } (
+      { ... }:
+      {
+        systems = import inputs.systems;
+        imports = [
+          inputs.treefmt-nix.flakeModule
+          ({
+            flake.darwinModules.default = import ./secrets-trampoline.nix;
+            perSystem =
+              { ... }:
+              {
+                treefmt = import ./treefmt.nix { };
+              };
+          })
+        ];
+      }
+    );
 }
